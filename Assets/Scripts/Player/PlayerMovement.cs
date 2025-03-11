@@ -4,15 +4,19 @@ using Unity.Mathematics;
 
 public class PlayerMovement : MonoBehaviour
 {
-	private const float MAX_SPEED = 0.10f;
-	private const float MIN_SPEED = -0.10f;
+	[SerializeField]
+	private float MAX_SPEED = 0.10f;
+	[SerializeField]
+	private float MAX_MOMENTUM = 1.0f;
+	[SerializeField]
+	private float MOMENTUM_STEP = 0.02f;
 
 	private int tempTestCounter = 0;
 	private InputAction moveAction;
 	//Vector2 for x and y acceleration
-	private Vector3 speed = new Vector3(0f, 0f, 0f);
-	//Vector2 for seed offset to prevent instantiating a new Vector2 every FixedUpdate
-	private Vector3 addedSpeed = new Vector3(0f, 0f, 0f);
+	//private Vector3 speed = new Vector3(0f, 0f, 0f);
+	//Vector2 for momentum to create the slidy movement feel
+	private Vector3 momentum = new Vector3(0f, 0f, 0f);
 
 	void Awake()
     {
@@ -29,44 +33,42 @@ public class PlayerMovement : MonoBehaviour
 
 		if(xAdjust != 0 || yAdjust != 0) {
 			//Note that xAdjust and yAdjust are normalized values - they're either -1, 0, or 1.
-			this.addedSpeed.x = xAdjust * 0.01f;
-			this.addedSpeed.y = yAdjust * 0.01f;
-
-			//Do this here so we're not adding vectors every fixed update
-			this.speed += addedSpeed;
+			this.momentum.x += xAdjust * MOMENTUM_STEP;
+			this.momentum.y += yAdjust * MOMENTUM_STEP;
 			//Clamp speed to ensure we don't get too zoomy
-			this.speed.x = math.clamp(this.speed.x, MIN_SPEED, MAX_SPEED);
-			this.speed.y = math.clamp(this.speed.y, MIN_SPEED, MAX_SPEED);
+			this.momentum.x = math.clamp(this.momentum.x, -MAX_MOMENTUM, MAX_MOMENTUM);
+			this.momentum.y = math.clamp(this.momentum.y, -MAX_MOMENTUM, MAX_MOMENTUM);
 		}
-		else if(this.speed.x != 0f || this.speed.y != 0f) {
-			//Manual check if speed is close enough to 0 to quell it. The code below was having issues where speed would persist
-			//at 0.01 or -0.01, causing the player to drift off.
-			if (math.abs(this.speed.x) <= 0.1f && math.abs(this.speed.x) > 0.0f)
+		
+		if(this.momentum.x != 0f || this.momentum.y != 0f)
+		{
+			if (this.momentum.x > 0)
 			{
-				this.speed.x = 0;
+				this.momentum.x -= (MOMENTUM_STEP/2);
 			}
-			if (math.abs(this.speed.y) <= 0.1f && math.abs(this.speed.y) > 0.0f)
+			else if (this.momentum.x < 0)
 			{
-				this.speed.y = 0;
+				this.momentum.x += (MOMENTUM_STEP/2);
 			}
-			
-			//Short if statement format: boolean ? do if true : do if false;
-			//The below lines do the following:
-			//If this.speed.x/y is 0, assign it to 0. Otherwise, assign it to -0.01 if it's positive or 0.01 if it's negative.
-			this.addedSpeed.x = this.speed.x == 0.0f ? 0.0f : this.speed.x < 0f ? 0.01f : -0.01f;
-			this.addedSpeed.y = this.speed.y == 0.0f ? 0.0f : this.speed.y < 0f ? 0.01f : -0.01f;
 
-			//This whole else if section is to bring speed back to 0.0f when the player stops moving.
-			this.speed += this.addedSpeed;
-			this.addedSpeed.x = 0.0f;
-			this.addedSpeed.y = 0.0f;
+			if (this.momentum.y > 0)
+			{
+				this.momentum.y -= (MOMENTUM_STEP/2);
+			}
+			else if(this.momentum.y < 0)
+			{
+				this.momentum.y += (MOMENTUM_STEP/2);
+			}
 		}
 
 		//if (tempTestCounter++ % 100 == 0) //This is only here and used to avoid printing 50 times per second.
 		//{
-		//	Debug.Log(this.addedSpeed + ", " + this.speed);
+		//	Debug.Log(this.momentum);
 		//}
 
-		this.gameObject.transform.position = this.gameObject.transform.position + this.speed;
+		if (this.momentum.x != 0.0f || this.momentum.y != 0.0f) {
+			this.gameObject.transform.position += (MAX_SPEED * this.momentum);
+		}
+		
 	}
 }
